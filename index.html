@@ -102,6 +102,7 @@
 </div>
 
 <div class="noKeyBanner" id="noKeyBanner" style="display:none">⚠️ Add an API key to load live prices</div>
+<div class="noKeyBanner" id="rateLimitBanner" style="display:none; background:#1a1420; border-color:#3a1a3a; color:#c98be0;"></div>
 
 <div class="symbolGrid" id="symbolGrid"></div>
 
@@ -162,58 +163,116 @@ function fmtDateLabel(dtStr, interval) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ---------------- API calls ----------------
-async function fetchTwelveData(ticker, rangeOpt) {
-  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(ticker)}&interval=${rangeOpt.interval}&outputsize=${rangeOpt.outputsize}&apikey=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  if (json.status === "error" || !json.values) throw new Error(json.message || `No data for ${ticker}`);
-  const values = [...json.values].reverse();
-  return values.map((v) => ({ dateLabel: fmtDateLabel(v.datetime, rangeOpt.interval), price: parseFloat(v.close) }));
-}
+// ---------------- API calls (batched: one HTTP call covers every ticker) ----------------
+class RateLimitError extends Error {}
 
-// current real-time (delayed on free plan) price + official day change
-async function fetchQuote(ticker) {
-  const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(ticker)}&apikey=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  if (json.status === "error" || json.code) throw new Error(json.message || `No quote for ${ticker}`);
-  return {
-    price: parseFloat(json.close),
-    change: parseFloat(json.change),
-    percentChange: parseFloat(json.percent_change),
-    isMarketOpen: json.is_market_open,
-  };
-}
-
-async function loadTicker(t) {
-  if (!apiKey) return;
-  const rangeOpt = RANGE_OPTIONS.find((r) => r.key === range);
-  const cacheKey = t + "|" + range;
-  if (cache[cacheKey]) { seriesByTicker[t] = cache[cacheKey]; render(); return; }
-  loadingSet.add(t); delete errorsByTicker[t]; render();
-  try {
-    const data = await fetchTwelveData(t, rangeOpt);
-    cache[cacheKey] = data;
-    seriesByTicker[t] = data;
-  } catch (err) {
-    errorsByTicker[t] = err.message || "Failed to load";
-  } finally {
-    loadingSet.delete(t); render();
+// throws if the *whole* request failed (bad key, or 429 rate limit) — happens at the
+// top level of the JSON, before per-symbol parsing, when using comma-separated symbols
+function checkTopLevelError(json) {
+  if (json && json.status === "error") {
+    const msg = json.message || "Request failed";
+    if (json.code === 429 || /credit|limit/i.test(msg)) throw new RateLimitError(msg);
+    throw new Error(msg);
   }
 }
 
-async function loadQuote(t) {
-  if (!apiKey) return;
-  quoteLoadingSet.add(t); render();
+async function fetchQuotesBatch(list) {
+  const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(list.join(","))}&apikey=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  checkTopLevelError(json);
+  const out = {};
+  if (list.length === 1) {
+    const sym = list[0];
+    out[sym] = { price: parseFloat(json.close), change: parseFloat(json.change), percentChange: parseFloat(json.percent_change) };
+    return out;
+  }
+  list.forEach((sym) => {
+    const item = json[sym];
+    if (!item || item.status === "error" || item.code) {
+      out[sym] = { error: (item && item.message) || "No data" };
+    } else {
+      out[sym] = { price: parseFloat(item.close), change: parseFloat(item.change), percentChange: parseFloat(item.percent_change) };
+    }
+  });
+  return out;
+}
+
+async function fetchSeriesBatch(list, rangeOpt) {
+  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(list.join(","))}&interval=${rangeOpt.interval}&outputsize=${rangeOpt.outputsize}&apikey=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  checkTopLevelError(json);
+  const out = {};
+  const parseOne = (obj) => {
+    if (!obj || obj.status === "error" || !obj.values) return null;
+    return [...obj.values].reverse().map((v) => ({ dateLabel: fmtDateLabel(v.datetime, rangeOpt.interval), price: parseFloat(v.close) }));
+  };
+  if (list.length === 1) {
+    const sym = list[0];
+    const parsed = parseOne(json);
+    out[sym] = parsed ? { data: parsed } : { error: json.message || "No data" };
+    return out;
+  }
+  list.forEach((sym) => {
+    const parsed = parseOne(json[sym]);
+    out[sym] = parsed ? { data: parsed } : { error: (json[sym] && json[sym].message) || "No data" };
+  });
+  return out;
+}
+
+let retryTimer = null;
+function showRateLimitBanner(msg, retryInSec) {
+  const el = document.getElementById("rateLimitBanner");
+  el.style.display = "flex";
+  el.textContent = `⏳ เกิน limit ต่อนาทีของ Twelve Data — กำลังลองใหม่ใน ${retryInSec} วินาที`;
+  clearTimeout(retryTimer);
+  retryTimer = setTimeout(() => { el.style.display = "none"; loadAll(); }, retryInSec * 1000);
+}
+
+async function loadAllQuotes() {
+  if (!apiKey || tickers.length === 0) return;
+  tickers.forEach((t) => quoteLoadingSet.add(t));
+  render();
   try {
-    const q = await fetchQuote(t);
-    quoteByTicker[t] = q;
-    delete errorsByTicker[t];
+    const results = await fetchQuotesBatch(tickers);
+    tickers.forEach((t) => {
+      const r = results[t];
+      if (!r) return;
+      if (r.error) { if (!seriesByTicker[t]) errorsByTicker[t] = r.error; }
+      else { quoteByTicker[t] = r; delete errorsByTicker[t]; }
+    });
   } catch (err) {
-    if (!seriesByTicker[t]) errorsByTicker[t] = err.message || "Failed to load";
+    if (err instanceof RateLimitError) { showRateLimitBanner(err.message, 65); return; }
+    tickers.forEach((t) => { if (!seriesByTicker[t]) errorsByTicker[t] = err.message || "Failed to load"; });
   } finally {
-    quoteLoadingSet.delete(t); render();
+    tickers.forEach((t) => quoteLoadingSet.delete(t));
+    render();
+  }
+}
+
+async function loadAllSeries() {
+  if (!apiKey || tickers.length === 0) return;
+  const rangeOpt = RANGE_OPTIONS.find((r) => r.key === range);
+  const needed = tickers.filter((t) => !cache[t + "|" + range]);
+  tickers.forEach((t) => { if (cache[t + "|" + range]) seriesByTicker[t] = cache[t + "|" + range]; });
+  if (needed.length === 0) { render(); return; }
+  needed.forEach((t) => loadingSet.add(t));
+  render();
+  try {
+    const results = await fetchSeriesBatch(needed, rangeOpt);
+    needed.forEach((t) => {
+      const r = results[t];
+      if (!r) return;
+      if (r.error) { errorsByTicker[t] = r.error; }
+      else { cache[t + "|" + range] = r.data; seriesByTicker[t] = r.data; delete errorsByTicker[t]; }
+    });
+  } catch (err) {
+    if (err instanceof RateLimitError) { showRateLimitBanner(err.message, 65); needed.forEach((t) => loadingSet.delete(t)); render(); return; }
+    needed.forEach((t) => { errorsByTicker[t] = err.message || "Failed to load"; });
+  } finally {
+    needed.forEach((t) => loadingSet.delete(t));
+    render();
   }
 }
 
@@ -221,22 +280,13 @@ let loadToken = 0;
 async function loadAll() {
   if (!apiKey) { render(); return; }
   const myToken = ++loadToken;
-  for (const t of tickers) {
-    if (myToken !== loadToken) return;
-    await loadQuote(t);
-    await new Promise((r) => setTimeout(r, 300));
-    if (myToken !== loadToken) return;
-    await loadTicker(t);
-    await new Promise((r) => setTimeout(r, 300));
-  }
+  await loadAllQuotes();
+  if (myToken !== loadToken) return;
+  await loadAllSeries();
 }
 
 async function refreshQuotesOnly() {
-  if (!apiKey) return;
-  for (const t of tickers) {
-    await loadQuote(t);
-    await new Promise((r) => setTimeout(r, 300));
-  }
+  await loadAllQuotes();
 }
 setInterval(refreshQuotesOnly, QUOTE_REFRESH_MS);
 
