@@ -11,25 +11,26 @@
 <link rel="apple-touch-icon" href="icon-192.png" />
 <title>Compare — Stock Charts</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; background: #0a0d13; }
   body {
     font-family: 'IBM Plex Sans', system-ui, sans-serif;
     color: #d1d4dc;
-    padding: env(safe-area-inset-top,16px) 16px calc(env(safe-area-inset-bottom,16px) + 16px);
+    padding: env(safe-area-inset-top,16px) 14px calc(env(safe-area-inset-bottom,16px) + 16px);
     max-width: 720px;
     margin: 0 auto;
     -webkit-user-select: none;
     user-select: none;
   }
   .mono { font-family: 'IBM Plex Mono', monospace; }
-  .header { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; padding-top:6px; }
+  .header { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; padding-top:6px; }
   .titleRow { display:flex; align-items:baseline; gap:7px; }
   .logoDot { width:8px; height:8px; border-radius:50%; background:linear-gradient(135deg,#3d7cf4,#2fbf9f); }
   h1 { font-size:18px; font-weight:700; margin:0; letter-spacing:-0.02em; color:#eef0f4; }
-  .subtitle { font-size:11.5px; color:#5b6270; font-weight:500; }
-  .keyBtn { background:#12161f; border:1px solid #1c212b; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; }
+  .subtitle { font-size:11px; color:#5b6270; font-weight:500; }
+  .headerBtns { display:flex; gap:6px; }
+  .iconBtn { background:#12161f; border:1px solid #1c212b; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:#9198a8; font-size:14px; }
   .rangeGroup { display:flex; gap:2px; background:#12161f; border:1px solid #1c212b; border-radius:9px; padding:3px; margin-bottom:12px; }
   .rangeBtn { flex:1; background:transparent; border:none; color:#7b8291; font-size:12.5px; font-weight:600; padding:8px 0; border-radius:6px; font-family:'IBM Plex Mono', monospace; }
   .rangeBtn.active { background:#232a38; color:#eef0f4; }
@@ -40,18 +41,29 @@
   .keyNote { font-size:10.5px; color:#5b6270; margin-top:8px; line-height:1.4; }
   .keyLink { color:#7ea2f7; }
   .noKeyBanner { display:flex; align-items:center; gap:6px; background:#1a140f; border:1px solid #3a2c1a; color:#e0a95c; font-size:12px; border-radius:8px; padding:10px 12px; margin-bottom:14px; }
-  .tickerRow { display:flex; gap:8px; align-items:center; overflow-x:auto; padding-bottom:6px; margin-bottom:12px; -webkit-overflow-scrolling: touch; }
-  .tickerRow::-webkit-scrollbar { display:none; }
-  .tickerChip { display:flex; align-items:center; gap:6px; background:#12161f; border:1px solid; border-radius:20px; padding:7px 10px; flex-shrink:0; transition:opacity .15s; }
-  .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-  .tickerSym { font-size:12.5px; font-weight:700; font-family:'IBM Plex Mono', monospace; color:#eef0f4; }
-  .tickerPct { font-size:11.5px; font-weight:600; font-family:'IBM Plex Mono', monospace; }
-  .tickerErr { font-size:11px; color:#f25a5a; font-family:'IBM Plex Mono', monospace; }
-  .removeIcon { color:#5b6270; margin-left:2px; font-size:14px; line-height:1; padding:2px; }
-  .addBox { display:flex; align-items:center; gap:2px; background:#0d1017; border:1px dashed #262c38; border-radius:20px; padding:5px 6px 5px 12px; flex-shrink:0; }
-  .addInput { background:transparent; border:none; color:#eef0f4; font-size:12.5px; font-family:'IBM Plex Mono', monospace; width:78px; }
-  .addBtn { background:#1a2029; border:none; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; color:#9198a8; font-size:15px; }
-  .chartCard { background:#0d1017; border:1px solid #171b24; border-radius:12px; padding:14px 6px 6px; min-height:340px; position:relative; }
+
+  /* ---- symbol grid: fits on one screen, no horizontal scroll ---- */
+  .symbolGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap:8px; margin-bottom:10px; }
+  .symbolCard {
+    position:relative; background:#12161f; border-radius:10px; padding:10px 10px 9px 12px;
+    border:1px solid #1c212b; border-left-width:4px; overflow:hidden; transition:opacity .15s;
+  }
+  .symbolCard.dimmed { opacity:0.38; }
+  .symbolCardTop { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .symbolSym { font-size:14.5px; font-weight:700; font-family:'IBM Plex Mono', monospace; color:#f2f4f7; letter-spacing:0.2px; }
+  .symbolRemove { color:#4a5262; font-size:13px; padding:2px 4px; line-height:1; }
+  .symbolPrice { font-size:17px; font-weight:700; font-family:'IBM Plex Mono', monospace; color:#eef0f4; line-height:1.1; }
+  .symbolChangeRow { display:flex; align-items:center; gap:6px; margin-top:3px; }
+  .symbolChangeAbs { font-size:11px; font-family:'IBM Plex Mono', monospace; color:#7b8291; }
+  .symbolChangePct { font-size:11.5px; font-weight:700; font-family:'IBM Plex Mono', monospace; padding:1px 6px; border-radius:5px; }
+  .symbolErr { font-size:11px; color:#f25a5a; font-family:'IBM Plex Mono', monospace; }
+  .symbolLoading { font-size:11px; color:#5b6270; font-family:'IBM Plex Mono', monospace; }
+
+  .addRow { display:flex; align-items:center; gap:8px; background:#0d1017; border:1px dashed #262c38; border-radius:10px; padding:9px 10px; margin-bottom:14px; }
+  .addInput { flex:1; background:transparent; border:none; color:#eef0f4; font-size:13px; font-family:'IBM Plex Mono', monospace; min-width:0; }
+  .addBtn { background:#1a2029; border:none; border-radius:7px; padding:7px 14px; color:#9198a8; font-size:13px; font-weight:600; }
+
+  .chartCard { background:#0d1017; border:1px solid #171b24; border-radius:12px; padding:14px 6px 6px; min-height:300px; position:relative; }
   .emptyState { color:#454b57; font-size:13px; text-align:center; padding:60px 20px; }
   .spin { animation: spin 1s linear infinite; display:inline-block; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -75,7 +87,10 @@
     <h1>Compare</h1>
     <span class="subtitle">live multi-symbol performance</span>
   </div>
-  <button class="keyBtn" id="keyToggleBtn">🔑</button>
+  <div class="headerBtns">
+    <button class="iconBtn" id="refreshBtn" title="Refresh prices">⟳</button>
+    <button class="iconBtn" id="keyToggleBtn">🔑</button>
+  </div>
 </div>
 
 <div class="keyPanel" id="keyPanel" style="display:none">
@@ -88,17 +103,22 @@
 
 <div class="noKeyBanner" id="noKeyBanner" style="display:none">⚠️ Add an API key to load live prices</div>
 
-<div class="rangeGroup" id="rangeGroup"></div>
+<div class="symbolGrid" id="symbolGrid"></div>
 
-<div class="tickerRow" id="tickerRow"></div>
+<div class="addRow">
+  <input class="addInput mono" id="addInput" placeholder="Add symbol e.g. AMZN" maxlength="6" />
+  <button class="addBtn" id="addBtn">Add</button>
+</div>
+
+<div class="rangeGroup" id="rangeGroup"></div>
 
 <div class="chartCard" id="chartCard">
   <div class="emptyState" id="emptyState">Connect an API key to load real price history.</div>
-  <svg id="chartSvg" width="100%" height="340" style="display:none; touch-action:none;"></svg>
+  <svg id="chartSvg" width="100%" height="300" style="display:none; touch-action:none;"></svg>
   <div class="tooltip" id="tooltip" style="display:none"></div>
 </div>
 
-<div class="footerRow"><span class="footerNote">Live data via Twelve Data · % change from start of range · tap a symbol to hide/show</span></div>
+<div class="footerRow"><span class="footerNote">Live data via Twelve Data · tap a symbol card to hide/show on chart</span></div>
 
 <script>
 // ---------------- config ----------------
@@ -111,6 +131,7 @@ const RANGE_OPTIONS = [
   { key: "1Y", interval: "1day", outputsize: 252 },
 ];
 const DEFAULT_TICKERS = ["AAPL", "MSFT", "NVDA"];
+const QUOTE_REFRESH_MS = 60000; // auto-refresh current price every 60s
 
 // ---------------- state ----------------
 let tickers = JSON.parse(localStorage.getItem("cmp_tickers") || "null") || [...DEFAULT_TICKERS];
@@ -118,7 +139,9 @@ let range = localStorage.getItem("cmp_range") || "1M";
 let apiKey = localStorage.getItem("cmp_apikey") || "";
 let hidden = new Set();
 let seriesByTicker = {};
-let loadingSet = new Set();
+let quoteByTicker = {};       // current real price + day change per ticker
+let loadingSet = new Set();   // history loading
+let quoteLoadingSet = new Set();
 let errorsByTicker = {};
 let cache = {};
 
@@ -131,6 +154,7 @@ function persist() {
 function colorOf(t) { return LINE_COLORS[tickers.indexOf(t) % LINE_COLORS.length]; }
 function fmtPct(v) { return (v >= 0 ? "+" : "") + v.toFixed(2) + "%"; }
 function fmtPrice(v) { return "$" + v.toFixed(2); }
+function fmtChangeAbs(v) { return (v >= 0 ? "+" : "") + v.toFixed(2); }
 
 function fmtDateLabel(dtStr, interval) {
   const d = new Date(dtStr.replace(" ", "T"));
@@ -138,6 +162,7 @@ function fmtDateLabel(dtStr, interval) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// ---------------- API calls ----------------
 async function fetchTwelveData(ticker, rangeOpt) {
   const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(ticker)}&interval=${rangeOpt.interval}&outputsize=${rangeOpt.outputsize}&apikey=${encodeURIComponent(apiKey)}`;
   const res = await fetch(url);
@@ -145,6 +170,20 @@ async function fetchTwelveData(ticker, rangeOpt) {
   if (json.status === "error" || !json.values) throw new Error(json.message || `No data for ${ticker}`);
   const values = [...json.values].reverse();
   return values.map((v) => ({ dateLabel: fmtDateLabel(v.datetime, rangeOpt.interval), price: parseFloat(v.close) }));
+}
+
+// current real-time (delayed on free plan) price + official day change
+async function fetchQuote(ticker) {
+  const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(ticker)}&apikey=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  if (json.status === "error" || json.code) throw new Error(json.message || `No quote for ${ticker}`);
+  return {
+    price: parseFloat(json.close),
+    change: parseFloat(json.change),
+    percentChange: parseFloat(json.percent_change),
+    isMarketOpen: json.is_market_open,
+  };
 }
 
 async function loadTicker(t) {
@@ -164,16 +203,42 @@ async function loadTicker(t) {
   }
 }
 
+async function loadQuote(t) {
+  if (!apiKey) return;
+  quoteLoadingSet.add(t); render();
+  try {
+    const q = await fetchQuote(t);
+    quoteByTicker[t] = q;
+    delete errorsByTicker[t];
+  } catch (err) {
+    if (!seriesByTicker[t]) errorsByTicker[t] = err.message || "Failed to load";
+  } finally {
+    quoteLoadingSet.delete(t); render();
+  }
+}
+
 let loadToken = 0;
 async function loadAll() {
   if (!apiKey) { render(); return; }
   const myToken = ++loadToken;
   for (const t of tickers) {
     if (myToken !== loadToken) return;
+    await loadQuote(t);
+    await new Promise((r) => setTimeout(r, 300));
+    if (myToken !== loadToken) return;
     await loadTicker(t);
-    await new Promise((r) => setTimeout(r, 350));
+    await new Promise((r) => setTimeout(r, 300));
   }
 }
+
+async function refreshQuotesOnly() {
+  if (!apiKey) return;
+  for (const t of tickers) {
+    await loadQuote(t);
+    await new Promise((r) => setTimeout(r, 300));
+  }
+}
+setInterval(refreshQuotesOnly, QUOTE_REFRESH_MS);
 
 function addTicker(raw) {
   const t = raw.trim().toUpperCase().replace(/[^A-Z.]/g, "");
@@ -217,74 +282,79 @@ document.getElementById("keySaveBtn").onclick = () => {
   render(); loadAll();
 };
 document.getElementById("keyInput").value = apiKey;
+document.getElementById("refreshBtn").onclick = () => { cache = {}; loadAll(); };
 
-function renderTickerRow() {
-  const row = document.getElementById("tickerRow");
-  row.innerHTML = "";
+document.getElementById("addBtn").onclick = () => {
+  const inp = document.getElementById("addInput");
+  addTicker(inp.value); inp.value = "";
+};
+document.getElementById("addInput").onkeydown = (e) => {
+  if (e.key === "Enter") { addTicker(e.target.value); e.target.value = ""; }
+};
+
+function renderSymbolGrid() {
+  const grid = document.getElementById("symbolGrid");
+  grid.innerHTML = "";
   tickers.forEach((t) => {
-    const chip = document.createElement("div");
-    chip.className = "tickerChip";
+    const card = document.createElement("div");
+    card.className = "symbolCard" + (hidden.has(t) ? " dimmed" : "");
+    card.style.borderLeftColor = colorOf(t);
+    card.style.background = `linear-gradient(90deg, ${colorOf(t)}14, #12161f 40%)`;
+
     const err = errorsByTicker[t];
-    const isHidden = hidden.has(t);
-    const isLoading = loadingSet.has(t);
-    const lv = lastValFor(t);
-    chip.style.borderColor = err ? "#f25a5a55" : isHidden ? "#242a36" : colorOf(t) + "55";
-    chip.style.opacity = isHidden ? "0.4" : "1";
-    chip.title = err || "";
+    const q = quoteByTicker[t];
+    const isQuoteLoading = quoteLoadingSet.has(t);
+    const isHistLoading = loadingSet.has(t);
 
-    const dot = document.createElement("span");
-    dot.className = "dot";
-    dot.style.background = err ? "#f25a5a" : colorOf(t);
-    chip.appendChild(dot);
-
+    const top = document.createElement("div");
+    top.className = "symbolCardTop";
     const sym = document.createElement("span");
-    sym.className = "tickerSym";
+    sym.className = "symbolSym";
     sym.textContent = t;
-    chip.appendChild(sym);
+    const rm = document.createElement("span");
+    rm.className = "symbolRemove";
+    rm.textContent = "✕";
+    rm.onclick = (e) => { e.stopPropagation(); removeTicker(t); };
+    top.appendChild(sym); top.appendChild(rm);
+    card.appendChild(top);
 
-    if (isLoading) {
-      const s = document.createElement("span");
-      s.className = "spin"; s.textContent = "⟳"; s.style.color = "#5b6270"; s.style.fontSize = "11px";
-      chip.appendChild(s);
-    } else if (err) {
-      const e = document.createElement("span");
-      e.className = "tickerErr"; e.textContent = "error";
-      chip.appendChild(e);
-    } else if (lv) {
-      const p = document.createElement("span");
-      p.className = "tickerPct";
-      p.style.color = lv.pct >= 0 ? "#2fbf9f" : "#f25a5a";
-      p.textContent = fmtPct(lv.pct);
-      chip.appendChild(p);
+    if (err) {
+      const e = document.createElement("div");
+      e.className = "symbolErr"; e.textContent = "⚠ " + err;
+      card.appendChild(e);
+    } else if (isQuoteLoading && !q) {
+      const l = document.createElement("div");
+      l.className = "symbolLoading";
+      l.innerHTML = `<span class="spin">⟳</span> loading…`;
+      card.appendChild(l);
+    } else if (q) {
+      const price = document.createElement("div");
+      price.className = "symbolPrice";
+      price.textContent = fmtPrice(q.price);
+      card.appendChild(price);
+
+      const changeRow = document.createElement("div");
+      changeRow.className = "symbolChangeRow";
+      const up = q.change >= 0;
+      const abs = document.createElement("span");
+      abs.className = "symbolChangeAbs";
+      abs.textContent = fmtChangeAbs(q.change);
+      const pct = document.createElement("span");
+      pct.className = "symbolChangePct";
+      pct.style.color = up ? "#2fbf9f" : "#f25a5a";
+      pct.style.background = up ? "#2fbf9f1c" : "#f25a5a1c";
+      pct.textContent = fmtPct(q.percentChange);
+      changeRow.appendChild(abs); changeRow.appendChild(pct);
+      card.appendChild(changeRow);
+    } else {
+      const l = document.createElement("div");
+      l.className = "symbolLoading"; l.textContent = "—";
+      card.appendChild(l);
     }
 
-    const x = document.createElement("span");
-    x.className = "removeIcon"; x.textContent = "✕";
-    x.onclick = (e) => { e.stopPropagation(); removeTicker(t); };
-    chip.appendChild(x);
-
-    chip.onclick = () => toggleHidden(t);
-    row.appendChild(chip);
+    card.onclick = () => toggleHidden(t);
+    grid.appendChild(card);
   });
-
-  const addBox = document.createElement("div");
-  addBox.className = "addBox";
-  addBox.innerHTML = `<input class="addInput mono" id="addInput" placeholder="Add symbol" maxlength="6" /><button class="addBtn" id="addBtn">＋</button>`;
-  row.appendChild(addBox);
-  document.getElementById("addBtn").onclick = () => {
-    const inp = document.getElementById("addInput");
-    addTicker(inp.value); inp.value = "";
-  };
-  document.getElementById("addInput").onkeydown = (e) => {
-    if (e.key === "Enter") { addTicker(e.target.value); e.target.value = ""; }
-  };
-}
-
-function lastValFor(t) {
-  const s = seriesByTicker[t];
-  if (!s || !s.length) return null;
-  const base = s[0].price, cur = s[s.length - 1].price;
-  return { price: cur, pct: ((cur - base) / base) * 100 };
 }
 
 document.getElementById("noKeyBanner").onclick = () => {
@@ -335,7 +405,7 @@ function drawChart() {
   svg.style.display = "block";
 
   const width = svg.clientWidth || svg.parentElement.clientWidth - 12;
-  const height = 340;
+  const height = 300;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.innerHTML = "";
 
@@ -354,7 +424,6 @@ function drawChart() {
   const xFor = (i) => padL + (rows.length <= 1 ? 0 : (i / (rows.length - 1)) * plotW);
   const yFor = (v) => padT + plotH - ((v - vmin) / (vmax - vmin)) * plotH;
 
-  // gridlines + y labels
   const gridSteps = 4;
   for (let g = 0; g <= gridSteps; g++) {
     const v = vmin + (g / gridSteps) * (vmax - vmin);
@@ -374,7 +443,6 @@ function drawChart() {
     svg.appendChild(label);
   }
 
-  // x labels (sparse)
   const xTickEvery = Math.max(1, Math.ceil(rows.length / 5));
   rows.forEach((row, i) => {
     if (i % xTickEvery !== 0 && i !== rows.length - 1) return;
@@ -387,7 +455,6 @@ function drawChart() {
     svg.appendChild(label);
   });
 
-  // lines
   visibleTickers.forEach((t) => {
     let d = "";
     rows.forEach((row, i) => {
@@ -399,13 +466,12 @@ function drawChart() {
     path.setAttribute("d", d.trim());
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", colorOf(t));
-    path.setAttribute("stroke-width", "2");
+    path.setAttribute("stroke-width", "2.25");
     path.setAttribute("stroke-linejoin", "round");
     path.setAttribute("stroke-linecap", "round");
     svg.appendChild(path);
   });
 
-  // crosshair interaction layer
   const overlay = document.createElementNS(NS, "rect");
   overlay.setAttribute("x", padL); overlay.setAttribute("y", padT);
   overlay.setAttribute("width", plotW); overlay.setAttribute("height", plotH);
@@ -446,7 +512,7 @@ function showTooltip(row, visibleTickers, x, svgRect) {
     const price = row[t + "_price"];
     const up = row[t] >= 0;
     html += `<div class="tooltipRow">
-      <span class="dot" style="background:${colorOf(t)}"></span>
+      <span class="dot" style="width:7px;height:7px;border-radius:50%;background:${colorOf(t)}"></span>
       <span class="tooltipSym">${t}</span>
       <span class="tooltipPrice">${fmtPrice(price)}</span>
       <span class="tooltipPct" style="color:${up ? "#2fbf9f" : "#f25a5a"}">${fmtPct(row[t])}</span>
@@ -464,7 +530,7 @@ function showTooltip(row, visibleTickers, x, svgRect) {
 // ---------------- master render ----------------
 function render() {
   renderRangeButtons();
-  renderTickerRow();
+  renderSymbolGrid();
   document.getElementById("noKeyBanner").style.display = (!apiKey && document.getElementById("keyPanel").style.display !== "block") ? "flex" : "none";
   drawChart();
 }
