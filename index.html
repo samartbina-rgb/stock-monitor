@@ -72,6 +72,15 @@
   .historyDel { color:#f25a5a; font-size:13px; padding:2px 6px; margin-left:8px; }
   .historyEmpty { color:#454b57; font-size:12px; text-align:center; padding:10px; }
 
+  .importSection { border-top:1px solid #1c212b; margin-top:10px; padding-top:10px; }
+  .importLabel { font-size:11px; color:#6b7280; margin-bottom:6px; }
+  .importRow { display:flex; gap:6px; margin-bottom:8px; }
+  .importRow input[type=password] { flex:1; background:#0d1017; border:1px solid #232a38; border-radius:7px; padding:9px 10px; color:#eef0f4; font-size:12.5px; font-family:'IBM Plex Mono', monospace; min-width:0; }
+  .importRow select { background:#0d1017; border:1px solid #232a38; border-radius:7px; padding:9px 8px; color:#eef0f4; font-size:12.5px; font-family:'IBM Plex Mono', monospace; }
+  .importBtn { flex:1; background:#1a2029; border:1px solid #2a3140; border-radius:7px; padding:9px; color:#c7d0e0; font-size:12.5px; font-weight:600; }
+  .importStatus { font-size:11px; color:#7b8291; min-height:14px; }
+  .importNote { font-size:10px; color:#454b57; margin-top:6px; line-height:1.4; }
+
   .chartCard { background:#0d1017; border:1px solid #171b24; border-radius:12px; padding:14px 6px 6px; min-height:280px; position:relative; }
   .emptyState { color:#454b57; font-size:13px; text-align:center; padding:50px 20px; line-height:1.6; }
   .footerRow { margin-top:10px; text-align:center; }
@@ -133,6 +142,8 @@ let range = localStorage.getItem("cmp_range") || "1M";
 let hidden = new Set();
 let history = JSON.parse(localStorage.getItem("cmp_history") || "{}"); // { AAPL: [{date:"2026-08-01",price:231.4}, ...] sorted asc }
 let editingTicker = null;
+let importApiKey = localStorage.getItem("cmp_apikey") || "";
+let importStatusByTicker = {};
 
 tickers.forEach((t) => { if (!history[t]) history[t] = []; });
 
@@ -163,6 +174,31 @@ function upsertEntry(t, dateStr, price) {
 function deleteEntry(t, dateStr) {
   history[t] = (history[t] || []).filter((e) => e.date !== dateStr);
   persist();
+}
+
+// one-off historical backfill via Twelve Data — a single API call, not repeated automatically
+async function importHistory(t, days) {
+  const keyInput = document.getElementById("apiKeyInput");
+  const key = (keyInput ? keyInput.value : importApiKey).trim();
+  if (!key) { importStatusByTicker[t] = { text: "กรุณาใส่ API key ก่อน", err: true }; render(); return; }
+  importApiKey = key;
+  localStorage.setItem("cmp_apikey", key);
+  importStatusByTicker[t] = { text: "กำลังโหลด…", err: false };
+  render();
+  try {
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(t)}&interval=1day&outputsize=${days}&apikey=${encodeURIComponent(key)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.status === "error" || !json.values) throw new Error(json.message || "โหลดไม่สำเร็จ");
+    json.values.forEach((v) => {
+      upsertEntry(t, v.datetime.slice(0, 10), parseFloat(v.close));
+    });
+    importStatusByTicker[t] = { text: `นำเข้าแล้ว ${json.values.length} วัน ✓`, err: false };
+  } catch (err) {
+    importStatusByTicker[t] = { text: "⚠ " + (err.message || "เกิดข้อผิดพลาด"), err: true };
+  } finally {
+    render();
+  }
 }
 
 function addTicker(raw) {
@@ -342,6 +378,46 @@ function renderEditPanel() {
     });
   }
   panel.appendChild(listWrap);
+
+  const importSection = document.createElement("div");
+  importSection.className = "importSection";
+  const importLabel = document.createElement("div");
+  importLabel.className = "importLabel"; importLabel.textContent = "นำเข้าราคาย้อนหลัง (ครั้งเดียว ไม่ดึงซ้ำอัตโนมัติ)";
+  importSection.appendChild(importLabel);
+
+  const keyRow = document.createElement("div");
+  keyRow.className = "importRow";
+  const keyInput = document.createElement("input");
+  keyInput.type = "password"; keyInput.id = "apiKeyInput";
+  keyInput.placeholder = "Twelve Data API key"; keyInput.value = importApiKey;
+  keyRow.appendChild(keyInput);
+  importSection.appendChild(keyRow);
+
+  const actionRow = document.createElement("div");
+  actionRow.className = "importRow";
+  const daysSelect = document.createElement("select");
+  [["30","30 วัน"],["90","90 วัน"],["365","1 ปี"]].forEach(([v,l]) => {
+    const o = document.createElement("option"); o.value = v; o.textContent = l;
+    daysSelect.appendChild(o);
+  });
+  const importBtn = document.createElement("button");
+  importBtn.className = "importBtn"; importBtn.textContent = "นำเข้า";
+  importBtn.onclick = () => importHistory(t, parseInt(daysSelect.value, 10));
+  actionRow.appendChild(daysSelect); actionRow.appendChild(importBtn);
+  importSection.appendChild(actionRow);
+
+  const status = document.createElement("div");
+  status.className = "importStatus";
+  const st = importStatusByTicker[t];
+  if (st) { status.textContent = st.text; status.style.color = st.err ? "#f25a5a" : "#2fbf9f"; }
+  importSection.appendChild(status);
+
+  const note = document.createElement("div");
+  note.className = "importNote";
+  note.textContent = "ฟรีจาก twelvedata.com · ถ้านำเข้าหลายตัวติดกัน เว้นห่างกันสัก 10 วินาที กัน limit ต่อนาทีของแผนฟรี";
+  importSection.appendChild(note);
+
+  panel.appendChild(importSection);
   wrap.appendChild(panel);
 }
 
