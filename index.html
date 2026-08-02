@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Compare" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
-<title>Compare — Stock Charts</title>
+<title>Compare — Manual Price Log</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -29,44 +29,51 @@
   .logoDot { width:8px; height:8px; border-radius:50%; background:linear-gradient(135deg,#3d7cf4,#2fbf9f); }
   h1 { font-size:18px; font-weight:700; margin:0; letter-spacing:-0.02em; color:#eef0f4; }
   .subtitle { font-size:11px; color:#5b6270; font-weight:500; }
-  .headerBtns { display:flex; gap:6px; }
-  .iconBtn { background:#12161f; border:1px solid #1c212b; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:#9198a8; font-size:14px; }
+
   .rangeGroup { display:flex; gap:2px; background:#12161f; border:1px solid #1c212b; border-radius:9px; padding:3px; margin-bottom:12px; }
   .rangeBtn { flex:1; background:transparent; border:none; color:#7b8291; font-size:12.5px; font-weight:600; padding:8px 0; border-radius:6px; font-family:'IBM Plex Mono', monospace; }
   .rangeBtn.active { background:#232a38; color:#eef0f4; }
-  .keyPanel { background:#12161f; border:1px solid #1c212b; border-radius:10px; padding:12px; margin-bottom:14px; }
-  .keyPanelRow { display:flex; gap:8px; }
-  .keyInput { flex:1; background:#0d1017; border:1px solid #232a38; border-radius:7px; padding:10px; color:#eef0f4; font-size:13px; font-family:'IBM Plex Mono', monospace; min-width:0; }
-  .keySaveBtn { background:#2d5df1; border:none; border-radius:7px; padding:10px 16px; color:#fff; font-size:12.5px; font-weight:600; white-space:nowrap; }
-  .keyNote { font-size:10.5px; color:#5b6270; margin-top:8px; line-height:1.4; }
-  .keyLink { color:#7ea2f7; }
-  .noKeyBanner { display:flex; align-items:center; gap:6px; background:#1a140f; border:1px solid #3a2c1a; color:#e0a95c; font-size:12px; border-radius:8px; padding:10px 12px; margin-bottom:14px; }
 
-  /* ---- symbol grid: fits on one screen, no horizontal scroll ---- */
   .symbolGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap:8px; margin-bottom:10px; }
   .symbolCard {
     position:relative; background:#12161f; border-radius:10px; padding:10px 10px 9px 12px;
     border:1px solid #1c212b; border-left-width:4px; overflow:hidden; transition:opacity .15s;
   }
   .symbolCard.dimmed { opacity:0.38; }
+  .symbolCard.editing { border-color:#3d7cf4; }
   .symbolCardTop { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
   .symbolSym { font-size:14.5px; font-weight:700; font-family:'IBM Plex Mono', monospace; color:#f2f4f7; letter-spacing:0.2px; }
-  .symbolRemove { color:#4a5262; font-size:13px; padding:2px 4px; line-height:1; }
+  .symbolIcons { display:flex; align-items:center; gap:8px; }
+  .symbolIconBtn { color:#6b7280; font-size:13px; padding:2px; line-height:1; }
   .symbolPrice { font-size:17px; font-weight:700; font-family:'IBM Plex Mono', monospace; color:#eef0f4; line-height:1.1; }
+  .symbolPriceEmpty { font-size:12px; color:#454b57; font-style:normal; }
   .symbolChangeRow { display:flex; align-items:center; gap:6px; margin-top:3px; }
   .symbolChangeAbs { font-size:11px; font-family:'IBM Plex Mono', monospace; color:#7b8291; }
   .symbolChangePct { font-size:11.5px; font-weight:700; font-family:'IBM Plex Mono', monospace; padding:1px 6px; border-radius:5px; }
-  .symbolErr { font-size:11px; color:#f25a5a; font-family:'IBM Plex Mono', monospace; }
-  .symbolLoading { font-size:11px; color:#5b6270; font-family:'IBM Plex Mono', monospace; }
+  .symbolAsOf { font-size:10px; color:#454b57; margin-top:4px; font-family:'IBM Plex Mono', monospace; }
 
-  .addRow { display:flex; align-items:center; gap:8px; background:#0d1017; border:1px dashed #262c38; border-radius:10px; padding:9px 10px; margin-bottom:14px; }
+  .addRow { display:flex; align-items:center; gap:8px; background:#0d1017; border:1px dashed #262c38; border-radius:10px; padding:9px 10px; margin-bottom:12px; }
   .addInput { flex:1; background:transparent; border:none; color:#eef0f4; font-size:13px; font-family:'IBM Plex Mono', monospace; min-width:0; }
   .addBtn { background:#1a2029; border:none; border-radius:7px; padding:7px 14px; color:#9198a8; font-size:13px; font-weight:600; }
 
-  .chartCard { background:#0d1017; border:1px solid #171b24; border-radius:12px; padding:14px 6px 6px; min-height:300px; position:relative; }
-  .emptyState { color:#454b57; font-size:13px; text-align:center; padding:60px 20px; }
-  .spin { animation: spin 1s linear infinite; display:inline-block; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  .editPanel { background:#12161f; border:1px solid #232a38; border-radius:10px; padding:12px; margin-bottom:14px; }
+  .editPanelTitle { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .editPanelSym { font-size:13.5px; font-weight:700; font-family:'IBM Plex Mono', monospace; color:#eef0f4; }
+  .editPanelClose { color:#6b7280; font-size:14px; padding:2px 6px; }
+  .editPanelRow { display:flex; gap:8px; margin-bottom:8px; }
+  .editPanelRow input { background:#0d1017; border:1px solid #232a38; border-radius:7px; padding:9px 10px; color:#eef0f4; font-size:13px; font-family:'IBM Plex Mono', monospace; min-width:0; }
+  .editPanelRow input[type=date] { flex:1.1; }
+  .editPanelRow input[type=number] { flex:1; }
+  .editSaveBtn { width:100%; background:#2d5df1; border:none; border-radius:7px; padding:10px; color:#fff; font-size:13px; font-weight:700; margin-bottom:10px; }
+  .historyList { display:flex; flex-direction:column; gap:4px; max-height:160px; overflow-y:auto; }
+  .historyRow { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; background:#0d1017; border-radius:6px; font-size:12px; }
+  .historyDate { color:#7b8291; font-family:'IBM Plex Mono', monospace; }
+  .historyPrice { color:#eef0f4; font-family:'IBM Plex Mono', monospace; font-weight:600; }
+  .historyDel { color:#f25a5a; font-size:13px; padding:2px 6px; margin-left:8px; }
+  .historyEmpty { color:#454b57; font-size:12px; text-align:center; padding:10px; }
+
+  .chartCard { background:#0d1017; border:1px solid #171b24; border-radius:12px; padding:14px 6px 6px; min-height:280px; position:relative; }
+  .emptyState { color:#454b57; font-size:13px; text-align:center; padding:50px 20px; line-height:1.6; }
   .footerRow { margin-top:10px; text-align:center; }
   .footerNote { font-size:10.5px; color:#454b57; }
   .tooltip { position:absolute; background:#12161fee; border:1px solid #232a38; border-radius:8px; padding:9px 11px; font-size:11.5px; min-width:150px; pointer-events:none; backdrop-filter: blur(4px); z-index:5; }
@@ -75,7 +82,7 @@
   .tooltipSym { font-weight:700; font-family:'IBM Plex Mono', monospace; font-size:11.5px; min-width:38px; }
   .tooltipPrice { color:#7b8291; font-family:'IBM Plex Mono', monospace; font-size:11px; flex:1; text-align:right; }
   .tooltipPct { font-weight:700; font-family:'IBM Plex Mono', monospace; font-size:11px; min-width:52px; text-align:right; }
-  input:focus { outline:none; }
+  input:focus { outline:none; border-color:#3d7cf4 !important; }
   button { font-family:inherit; cursor:pointer; }
 </style>
 </head>
@@ -85,220 +92,91 @@
   <div class="titleRow">
     <div class="logoDot"></div>
     <h1>Compare</h1>
-    <span class="subtitle">live multi-symbol performance</span>
+    <span class="subtitle">manual price log</span>
   </div>
-  <div class="headerBtns">
-    <button class="iconBtn" id="refreshBtn" title="Refresh prices">⟳</button>
-    <button class="iconBtn" id="keyToggleBtn">🔑</button>
-  </div>
-</div>
-
-<div class="keyPanel" id="keyPanel" style="display:none">
-  <div class="keyPanelRow">
-    <input class="keyInput mono" id="keyInput" type="password" placeholder="Twelve Data API key" />
-    <button class="keySaveBtn" id="keySaveBtn">Connect</button>
-  </div>
-  <div class="keyNote">Free key at <span class="keyLink">twelvedata.com</span> · saved only on this device (localStorage), never sent anywhere else.</div>
-</div>
-
-<div class="noKeyBanner" id="noKeyBanner" style="display:none">⚠️ Add an API key to load live prices</div>
-<div class="noKeyBanner" id="rateLimitBanner" style="display:none; background:#1a1420; border-color:#3a1a3a; color:#c98be0;"></div>
-
-<div class="symbolGrid" id="symbolGrid"></div>
-
-<div class="addRow">
-  <input class="addInput mono" id="addInput" placeholder="Add symbol e.g. AMZN" maxlength="6" />
-  <button class="addBtn" id="addBtn">Add</button>
 </div>
 
 <div class="rangeGroup" id="rangeGroup"></div>
 
+<div class="symbolGrid" id="symbolGrid"></div>
+
+<div class="addRow">
+  <input class="addInput mono" id="addInput" placeholder="Add symbol e.g. AAPL" maxlength="10" />
+  <button class="addBtn" id="addBtn">Add</button>
+</div>
+
+<div id="editPanelWrap"></div>
+
 <div class="chartCard" id="chartCard">
-  <div class="emptyState" id="emptyState">Connect an API key to load real price history.</div>
-  <svg id="chartSvg" width="100%" height="300" style="display:none; touch-action:none;"></svg>
+  <div class="emptyState" id="emptyState">ยังไม่มีข้อมูล — กดไอคอน ✎ ที่การ์ดหุ้นเพื่อเริ่มบันทึกราคา</div>
+  <svg id="chartSvg" width="100%" height="280" style="display:none; touch-action:none;"></svg>
   <div class="tooltip" id="tooltip" style="display:none"></div>
 </div>
 
-<div class="footerRow"><span class="footerNote">Live data via Twelve Data · tap a symbol card to hide/show on chart</span></div>
+<div class="footerRow"><span class="footerNote">ข้อมูลที่คุณบันทึกเอง เก็บไว้ในเครื่องนี้เท่านั้น · แตะการ์ดเพื่อซ่อน/แสดงเส้นในกราฟ</span></div>
 
 <script>
 // ---------------- config ----------------
 const LINE_COLORS = ["#3d7cf4", "#f2994a", "#a56bf5", "#2fbf9f", "#f25a5a", "#f5c542", "#5ac8fa", "#e05fa0"];
 const RANGE_OPTIONS = [
-  { key: "1D", interval: "15min", outputsize: 27 },
-  { key: "5D", interval: "1day", outputsize: 5 },
-  { key: "1M", interval: "1day", outputsize: 22 },
-  { key: "3M", interval: "1day", outputsize: 65 },
-  { key: "1Y", interval: "1day", outputsize: 252 },
+  { key: "1W", days: 7 },
+  { key: "1M", days: 30 },
+  { key: "3M", days: 90 },
+  { key: "1Y", days: 365 },
+  { key: "All", days: Infinity },
 ];
 const DEFAULT_TICKERS = ["AAPL", "MSFT", "NVDA"];
-const QUOTE_REFRESH_MS = 60000; // auto-refresh current price every 60s
 
 // ---------------- state ----------------
 let tickers = JSON.parse(localStorage.getItem("cmp_tickers") || "null") || [...DEFAULT_TICKERS];
 let range = localStorage.getItem("cmp_range") || "1M";
-let apiKey = localStorage.getItem("cmp_apikey") || "";
 let hidden = new Set();
-let seriesByTicker = {};
-let quoteByTicker = {};       // current real price + day change per ticker
-let loadingSet = new Set();   // history loading
-let quoteLoadingSet = new Set();
-let errorsByTicker = {};
-let cache = {};
+let history = JSON.parse(localStorage.getItem("cmp_history") || "{}"); // { AAPL: [{date:"2026-08-01",price:231.4}, ...] sorted asc }
+let editingTicker = null;
+
+tickers.forEach((t) => { if (!history[t]) history[t] = []; });
 
 function persist() {
   localStorage.setItem("cmp_tickers", JSON.stringify(tickers));
   localStorage.setItem("cmp_range", range);
-  localStorage.setItem("cmp_apikey", apiKey);
+  localStorage.setItem("cmp_history", JSON.stringify(history));
 }
 
 function colorOf(t) { return LINE_COLORS[tickers.indexOf(t) % LINE_COLORS.length]; }
 function fmtPct(v) { return (v >= 0 ? "+" : "") + v.toFixed(2) + "%"; }
 function fmtPrice(v) { return "$" + v.toFixed(2); }
 function fmtChangeAbs(v) { return (v >= 0 ? "+" : "") + v.toFixed(2); }
-
-function fmtDateLabel(dtStr, interval) {
-  const d = new Date(dtStr.replace(" ", "T"));
-  if (interval === "15min") return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function fmtDateShort(dStr) {
+  const d = new Date(dStr + "T00:00:00");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ---------------- API calls (batched: one HTTP call covers every ticker) ----------------
-class RateLimitError extends Error {}
-
-// throws if the *whole* request failed (bad key, or 429 rate limit) — happens at the
-// top level of the JSON, before per-symbol parsing, when using comma-separated symbols
-function checkTopLevelError(json) {
-  if (json && json.status === "error") {
-    const msg = json.message || "Request failed";
-    if (json.code === 429 || /credit|limit/i.test(msg)) throw new RateLimitError(msg);
-    throw new Error(msg);
-  }
+function upsertEntry(t, dateStr, price) {
+  const arr = history[t] || (history[t] = []);
+  const idx = arr.findIndex((e) => e.date === dateStr);
+  if (idx >= 0) arr[idx].price = price;
+  else arr.push({ date: dateStr, price });
+  arr.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  persist();
 }
-
-async function fetchQuotesBatch(list) {
-  const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(list.join(","))}&apikey=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  checkTopLevelError(json);
-  const out = {};
-  if (list.length === 1) {
-    const sym = list[0];
-    out[sym] = { price: parseFloat(json.close), change: parseFloat(json.change), percentChange: parseFloat(json.percent_change) };
-    return out;
-  }
-  list.forEach((sym) => {
-    const item = json[sym];
-    if (!item || item.status === "error" || item.code) {
-      out[sym] = { error: (item && item.message) || "No data" };
-    } else {
-      out[sym] = { price: parseFloat(item.close), change: parseFloat(item.change), percentChange: parseFloat(item.percent_change) };
-    }
-  });
-  return out;
+function deleteEntry(t, dateStr) {
+  history[t] = (history[t] || []).filter((e) => e.date !== dateStr);
+  persist();
 }
-
-async function fetchSeriesBatch(list, rangeOpt) {
-  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(list.join(","))}&interval=${rangeOpt.interval}&outputsize=${rangeOpt.outputsize}&apikey=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  checkTopLevelError(json);
-  const out = {};
-  const parseOne = (obj) => {
-    if (!obj || obj.status === "error" || !obj.values) return null;
-    return [...obj.values].reverse().map((v) => ({ dateLabel: fmtDateLabel(v.datetime, rangeOpt.interval), price: parseFloat(v.close) }));
-  };
-  if (list.length === 1) {
-    const sym = list[0];
-    const parsed = parseOne(json);
-    out[sym] = parsed ? { data: parsed } : { error: json.message || "No data" };
-    return out;
-  }
-  list.forEach((sym) => {
-    const parsed = parseOne(json[sym]);
-    out[sym] = parsed ? { data: parsed } : { error: (json[sym] && json[sym].message) || "No data" };
-  });
-  return out;
-}
-
-let retryTimer = null;
-function showRateLimitBanner(msg, retryInSec) {
-  const el = document.getElementById("rateLimitBanner");
-  el.style.display = "flex";
-  el.textContent = `⏳ เกิน limit ต่อนาทีของ Twelve Data — กำลังลองใหม่ใน ${retryInSec} วินาที`;
-  clearTimeout(retryTimer);
-  retryTimer = setTimeout(() => { el.style.display = "none"; loadAll(); }, retryInSec * 1000);
-}
-
-async function loadAllQuotes() {
-  if (!apiKey || tickers.length === 0) return;
-  tickers.forEach((t) => quoteLoadingSet.add(t));
-  render();
-  try {
-    const results = await fetchQuotesBatch(tickers);
-    tickers.forEach((t) => {
-      const r = results[t];
-      if (!r) return;
-      if (r.error) { if (!seriesByTicker[t]) errorsByTicker[t] = r.error; }
-      else { quoteByTicker[t] = r; delete errorsByTicker[t]; }
-    });
-  } catch (err) {
-    if (err instanceof RateLimitError) { showRateLimitBanner(err.message, 65); return; }
-    tickers.forEach((t) => { if (!seriesByTicker[t]) errorsByTicker[t] = err.message || "Failed to load"; });
-  } finally {
-    tickers.forEach((t) => quoteLoadingSet.delete(t));
-    render();
-  }
-}
-
-async function loadAllSeries() {
-  if (!apiKey || tickers.length === 0) return;
-  const rangeOpt = RANGE_OPTIONS.find((r) => r.key === range);
-  const needed = tickers.filter((t) => !cache[t + "|" + range]);
-  tickers.forEach((t) => { if (cache[t + "|" + range]) seriesByTicker[t] = cache[t + "|" + range]; });
-  if (needed.length === 0) { render(); return; }
-  needed.forEach((t) => loadingSet.add(t));
-  render();
-  try {
-    const results = await fetchSeriesBatch(needed, rangeOpt);
-    needed.forEach((t) => {
-      const r = results[t];
-      if (!r) return;
-      if (r.error) { errorsByTicker[t] = r.error; }
-      else { cache[t + "|" + range] = r.data; seriesByTicker[t] = r.data; delete errorsByTicker[t]; }
-    });
-  } catch (err) {
-    if (err instanceof RateLimitError) { showRateLimitBanner(err.message, 65); needed.forEach((t) => loadingSet.delete(t)); render(); return; }
-    needed.forEach((t) => { errorsByTicker[t] = err.message || "Failed to load"; });
-  } finally {
-    needed.forEach((t) => loadingSet.delete(t));
-    render();
-  }
-}
-
-let loadToken = 0;
-async function loadAll() {
-  if (!apiKey) { render(); return; }
-  const myToken = ++loadToken;
-  await loadAllQuotes();
-  if (myToken !== loadToken) return;
-  await loadAllSeries();
-}
-
-async function refreshQuotesOnly() {
-  await loadAllQuotes();
-}
-setInterval(refreshQuotesOnly, QUOTE_REFRESH_MS);
 
 function addTicker(raw) {
-  const t = raw.trim().toUpperCase().replace(/[^A-Z.]/g, "");
+  const t = raw.trim().toUpperCase().replace(/[^A-Z0-9.]/g, "").slice(0, 10);
   if (!t || tickers.includes(t) || tickers.length >= 8) return;
   tickers.push(t);
-  persist(); render(); loadAll();
+  history[t] = [];
+  persist(); render();
 }
 function removeTicker(t) {
   tickers = tickers.filter((x) => x !== t);
   hidden.delete(t);
+  delete history[t];
+  if (editingTicker === t) editingTicker = null;
   persist(); render();
 }
 function toggleHidden(t) {
@@ -306,34 +184,21 @@ function toggleHidden(t) {
   render();
 }
 
-// ---------------- rendering: chrome ----------------
+// ---------------- range buttons ----------------
 const rangeGroupEl = document.getElementById("rangeGroup");
 RANGE_OPTIONS.forEach((r) => {
   const btn = document.createElement("button");
   btn.className = "rangeBtn" + (r.key === range ? " active" : "");
   btn.textContent = r.key;
-  btn.onclick = () => { range = r.key; persist(); renderRangeButtons(); render(); loadAll(); };
   btn.dataset.key = r.key;
+  btn.onclick = () => { range = r.key; persist(); render(); };
   rangeGroupEl.appendChild(btn);
 });
 function renderRangeButtons() {
   [...rangeGroupEl.children].forEach((b) => b.classList.toggle("active", b.dataset.key === range));
 }
 
-document.getElementById("keyToggleBtn").onclick = () => {
-  const p = document.getElementById("keyPanel");
-  p.style.display = p.style.display === "none" ? "block" : "none";
-};
-document.getElementById("keySaveBtn").onclick = () => {
-  const v = document.getElementById("keyInput").value.trim();
-  if (!v) return;
-  apiKey = v; cache = {}; persist();
-  document.getElementById("keyPanel").style.display = "none";
-  render(); loadAll();
-};
-document.getElementById("keyInput").value = apiKey;
-document.getElementById("refreshBtn").onclick = () => { cache = {}; loadAll(); };
-
+// ---------------- add ----------------
 document.getElementById("addBtn").onclick = () => {
   const inp = document.getElementById("addInput");
   addTicker(inp.value); inp.value = "";
@@ -342,64 +207,67 @@ document.getElementById("addInput").onkeydown = (e) => {
   if (e.key === "Enter") { addTicker(e.target.value); e.target.value = ""; }
 };
 
+// ---------------- symbol grid ----------------
+function lastTwo(t) {
+  const arr = history[t] || [];
+  return { latest: arr[arr.length - 1] || null, prev: arr[arr.length - 2] || null };
+}
+
 function renderSymbolGrid() {
   const grid = document.getElementById("symbolGrid");
   grid.innerHTML = "";
   tickers.forEach((t) => {
     const card = document.createElement("div");
-    card.className = "symbolCard" + (hidden.has(t) ? " dimmed" : "");
+    card.className = "symbolCard" + (hidden.has(t) ? " dimmed" : "") + (editingTicker === t ? " editing" : "");
     card.style.borderLeftColor = colorOf(t);
     card.style.background = `linear-gradient(90deg, ${colorOf(t)}14, #12161f 40%)`;
-
-    const err = errorsByTicker[t];
-    const q = quoteByTicker[t];
-    const isQuoteLoading = quoteLoadingSet.has(t);
-    const isHistLoading = loadingSet.has(t);
 
     const top = document.createElement("div");
     top.className = "symbolCardTop";
     const sym = document.createElement("span");
     sym.className = "symbolSym";
     sym.textContent = t;
+    const icons = document.createElement("span");
+    icons.className = "symbolIcons";
+    const edit = document.createElement("span");
+    edit.className = "symbolIconBtn"; edit.textContent = "✎";
+    edit.onclick = (e) => { e.stopPropagation(); editingTicker = editingTicker === t ? null : t; render(); };
     const rm = document.createElement("span");
-    rm.className = "symbolRemove";
-    rm.textContent = "✕";
+    rm.className = "symbolIconBtn"; rm.textContent = "✕";
     rm.onclick = (e) => { e.stopPropagation(); removeTicker(t); };
-    top.appendChild(sym); top.appendChild(rm);
+    icons.appendChild(edit); icons.appendChild(rm);
+    top.appendChild(sym); top.appendChild(icons);
     card.appendChild(top);
 
-    if (err) {
-      const e = document.createElement("div");
-      e.className = "symbolErr"; e.textContent = "⚠ " + err;
-      card.appendChild(e);
-    } else if (isQuoteLoading && !q) {
-      const l = document.createElement("div");
-      l.className = "symbolLoading";
-      l.innerHTML = `<span class="spin">⟳</span> loading…`;
-      card.appendChild(l);
-    } else if (q) {
+    const { latest, prev } = lastTwo(t);
+    if (!latest) {
+      const p = document.createElement("div");
+      p.className = "symbolPriceEmpty"; p.textContent = "ยังไม่มีข้อมูล";
+      card.appendChild(p);
+    } else {
       const price = document.createElement("div");
-      price.className = "symbolPrice";
-      price.textContent = fmtPrice(q.price);
+      price.className = "symbolPrice"; price.textContent = fmtPrice(latest.price);
       card.appendChild(price);
 
-      const changeRow = document.createElement("div");
-      changeRow.className = "symbolChangeRow";
-      const up = q.change >= 0;
-      const abs = document.createElement("span");
-      abs.className = "symbolChangeAbs";
-      abs.textContent = fmtChangeAbs(q.change);
-      const pct = document.createElement("span");
-      pct.className = "symbolChangePct";
-      pct.style.color = up ? "#2fbf9f" : "#f25a5a";
-      pct.style.background = up ? "#2fbf9f1c" : "#f25a5a1c";
-      pct.textContent = fmtPct(q.percentChange);
-      changeRow.appendChild(abs); changeRow.appendChild(pct);
-      card.appendChild(changeRow);
-    } else {
-      const l = document.createElement("div");
-      l.className = "symbolLoading"; l.textContent = "—";
-      card.appendChild(l);
+      if (prev) {
+        const changeAbs = latest.price - prev.price;
+        const changePct = (changeAbs / prev.price) * 100;
+        const up = changeAbs >= 0;
+        const row = document.createElement("div");
+        row.className = "symbolChangeRow";
+        const abs = document.createElement("span");
+        abs.className = "symbolChangeAbs"; abs.textContent = fmtChangeAbs(changeAbs);
+        const pct = document.createElement("span");
+        pct.className = "symbolChangePct";
+        pct.style.color = up ? "#2fbf9f" : "#f25a5a";
+        pct.style.background = up ? "#2fbf9f1c" : "#f25a5a1c";
+        pct.textContent = fmtPct(changePct);
+        row.appendChild(abs); row.appendChild(pct);
+        card.appendChild(row);
+      }
+      const asOf = document.createElement("div");
+      asOf.className = "symbolAsOf"; asOf.textContent = "as of " + fmtDateShort(latest.date);
+      card.appendChild(asOf);
     }
 
     card.onclick = () => toggleHidden(t);
@@ -407,71 +275,141 @@ function renderSymbolGrid() {
   });
 }
 
-document.getElementById("noKeyBanner").onclick = () => {
-  document.getElementById("keyPanel").style.display = "block";
-};
+// ---------------- edit panel ----------------
+function renderEditPanel() {
+  const wrap = document.getElementById("editPanelWrap");
+  wrap.innerHTML = "";
+  if (!editingTicker || !tickers.includes(editingTicker)) return;
+  const t = editingTicker;
 
-// ---------------- chart (SVG) ----------------
+  const panel = document.createElement("div");
+  panel.className = "editPanel";
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "editPanelTitle";
+  const title = document.createElement("span");
+  title.className = "editPanelSym mono"; title.textContent = "บันทึกราคา · " + t;
+  const close = document.createElement("span");
+  close.className = "editPanelClose"; close.textContent = "✕";
+  close.onclick = () => { editingTicker = null; render(); };
+  titleRow.appendChild(title); titleRow.appendChild(close);
+  panel.appendChild(titleRow);
+
+  const row = document.createElement("div");
+  row.className = "editPanelRow";
+  const dateInput = document.createElement("input");
+  dateInput.type = "date"; dateInput.value = todayStr(); dateInput.max = todayStr();
+  const priceInput = document.createElement("input");
+  priceInput.type = "number"; priceInput.inputMode = "decimal"; priceInput.step = "0.01";
+  priceInput.placeholder = "ราคา เช่น 231.40";
+  row.appendChild(dateInput); row.appendChild(priceInput);
+  panel.appendChild(row);
+
+  const saveBtn = document.createElement("button");
+  saveBtn.className = "editSaveBtn"; saveBtn.textContent = "บันทึก";
+  saveBtn.onclick = () => {
+    const p = parseFloat(priceInput.value);
+    if (!dateInput.value || isNaN(p)) return;
+    upsertEntry(t, dateInput.value, p);
+    priceInput.value = "";
+    render();
+  };
+  panel.appendChild(saveBtn);
+
+  const listWrap = document.createElement("div");
+  listWrap.className = "historyList";
+  const entries = [...(history[t] || [])].reverse();
+  if (entries.length === 0) {
+    const e = document.createElement("div");
+    e.className = "historyEmpty"; e.textContent = "ยังไม่มีประวัติราคา";
+    listWrap.appendChild(e);
+  } else {
+    entries.forEach((entry) => {
+      const r = document.createElement("div");
+      r.className = "historyRow";
+      const d = document.createElement("span");
+      d.className = "historyDate mono"; d.textContent = entry.date;
+      const p = document.createElement("span");
+      p.className = "historyPrice"; p.textContent = fmtPrice(entry.price);
+      const del = document.createElement("span");
+      del.className = "historyDel"; del.textContent = "✕";
+      del.onclick = () => { deleteEntry(t, entry.date); render(); };
+      const right = document.createElement("span");
+      right.style.display = "flex"; right.style.alignItems = "center";
+      right.appendChild(p); right.appendChild(del);
+      r.appendChild(d); r.appendChild(right);
+      listWrap.appendChild(r);
+    });
+  }
+  panel.appendChild(listWrap);
+  wrap.appendChild(panel);
+}
+
+// ---------------- chart (SVG, date-based x scale) ----------------
 const svg = document.getElementById("chartSvg");
 const tooltip = document.getElementById("tooltip");
 const emptyState = document.getElementById("emptyState");
 const NS = "http://www.w3.org/2000/svg";
 
-function buildRows() {
-  const lens = tickers.map((t) => (seriesByTicker[t] || []).length);
-  const len = Math.max(0, ...lens);
-  const rows = [];
-  for (let i = 0; i < len; i++) {
-    let dateLabel = "";
-    const row = {};
-    for (const t of tickers) {
-      const s = seriesByTicker[t];
-      if (!s || !s[i] || !s[0]) continue;
-      if (!dateLabel) dateLabel = s[i].dateLabel;
-      const base = s[0].price;
-      row[t] = ((s[i].price - base) / base) * 100;
-      row[t + "_price"] = s[i].price;
-    }
-    row.dateLabel = dateLabel;
-    rows.push(row);
-  }
-  return rows;
+function filteredSeries(t) {
+  const opt = RANGE_OPTIONS.find((r) => r.key === range);
+  const arr = history[t] || [];
+  if (opt.days === Infinity) return arr;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - opt.days);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  return arr.filter((e) => e.date >= cutoffStr);
 }
 
 function drawChart() {
-  const rows = buildRows();
-  const visibleTickers = tickers.filter((t) => !hidden.has(t) && seriesByTicker[t]);
-  if (!apiKey) {
-    emptyState.style.display = "block"; emptyState.textContent = "Connect an API key to load real price history.";
-    svg.style.display = "none"; tooltip.style.display = "none";
-    return;
-  }
-  if (rows.length === 0 || visibleTickers.length === 0) {
-    emptyState.style.display = "block"; emptyState.textContent = "Loading price data…";
+  const visibleTickers = tickers.filter((t) => !hidden.has(t));
+  const seriesMap = {};
+  let minTs = Infinity, maxTs = -Infinity, anyPoints = false;
+  visibleTickers.forEach((t) => {
+    const s = filteredSeries(t);
+    seriesMap[t] = s;
+    s.forEach((e) => {
+      const ts = new Date(e.date).getTime();
+      minTs = Math.min(minTs, ts); maxTs = Math.max(maxTs, ts);
+      anyPoints = true;
+    });
+  });
+
+  if (!anyPoints) {
+    emptyState.style.display = "block";
+    emptyState.textContent = "ยังไม่มีข้อมูลในช่วงเวลานี้ — กดไอคอน ✎ ที่การ์ดหุ้นเพื่อเริ่มบันทึกราคา";
     svg.style.display = "none"; tooltip.style.display = "none";
     return;
   }
   emptyState.style.display = "none";
   svg.style.display = "block";
+  if (minTs === maxTs) { minTs -= 86400000; maxTs += 86400000; }
 
   const width = svg.clientWidth || svg.parentElement.clientWidth - 12;
-  const height = 300;
+  const height = 280;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.innerHTML = "";
 
-  const padL = 40, padR = 10, padT = 14, padB = 26;
+  const padL = 44, padR = 10, padT = 14, padB = 26;
   const plotW = width - padL - padR;
   const plotH = height - padT - padB;
 
   let vmin = Infinity, vmax = -Infinity;
-  rows.forEach((row) => visibleTickers.forEach((t) => {
-    if (row[t] != null) { vmin = Math.min(vmin, row[t]); vmax = Math.max(vmax, row[t]); }
-  }));
+  visibleTickers.forEach((t) => {
+    const s = seriesMap[t];
+    if (s.length === 0) return;
+    const base = s[0].price;
+    s.forEach((e) => {
+      const pct = ((e.price - base) / base) * 100;
+      vmin = Math.min(vmin, pct); vmax = Math.max(vmax, pct);
+    });
+  });
+  if (vmin === Infinity) { vmin = -1; vmax = 1; }
   if (vmin === vmax) { vmin -= 1; vmax += 1; }
-  const pad = (vmax - vmin) * 0.1;
-  vmin -= pad; vmax += pad;
+  const padv = (vmax - vmin) * 0.12;
+  vmin -= padv; vmax += padv;
 
-  const xFor = (i) => padL + (rows.length <= 1 ? 0 : (i / (rows.length - 1)) * plotW);
+  const xFor = (ts) => padL + ((ts - minTs) / (maxTs - minTs)) * plotW;
   const yFor = (v) => padT + plotH - ((v - vmin) / (vmax - vmin)) * plotH;
 
   const gridSteps = 4;
@@ -484,7 +422,6 @@ function drawChart() {
     line.setAttribute("stroke", v >= -0.001 && v <= 0.001 ? "#2a303c" : "#1b2028");
     line.setAttribute("stroke-width", "1");
     svg.appendChild(line);
-
     const label = document.createElementNS(NS, "text");
     label.setAttribute("x", 4); label.setAttribute("y", y + 3);
     label.setAttribute("fill", "#5b6270"); label.setAttribute("font-size", "10");
@@ -493,23 +430,27 @@ function drawChart() {
     svg.appendChild(label);
   }
 
-  const xTickEvery = Math.max(1, Math.ceil(rows.length / 5));
-  rows.forEach((row, i) => {
-    if (i % xTickEvery !== 0 && i !== rows.length - 1) return;
+  const xTicks = 4;
+  for (let i = 0; i <= xTicks; i++) {
+    const ts = minTs + (i / xTicks) * (maxTs - minTs);
     const label = document.createElementNS(NS, "text");
-    label.setAttribute("x", xFor(i)); label.setAttribute("y", height - 8);
+    label.setAttribute("x", xFor(ts)); label.setAttribute("y", height - 8);
     label.setAttribute("fill", "#5b6270"); label.setAttribute("font-size", "10");
     label.setAttribute("font-family", "IBM Plex Mono, monospace");
-    label.setAttribute("text-anchor", i === rows.length - 1 ? "end" : "middle");
-    label.textContent = row.dateLabel;
+    label.setAttribute("text-anchor", i === 0 ? "start" : i === xTicks ? "end" : "middle");
+    label.textContent = fmtDateShort(new Date(ts).toISOString().slice(0, 10));
     svg.appendChild(label);
-  });
+  }
 
   visibleTickers.forEach((t) => {
+    const s = seriesMap[t];
+    if (s.length === 0) return;
+    const base = s[0].price;
     let d = "";
-    rows.forEach((row, i) => {
-      if (row[t] == null) return;
-      const x = xFor(i), y = yFor(row[t]);
+    s.forEach((e) => {
+      const ts = new Date(e.date).getTime();
+      const pct = ((e.price - base) / base) * 100;
+      const x = xFor(ts), y = yFor(pct);
       d += (d === "" ? "M" : "L") + x.toFixed(2) + "," + y.toFixed(2) + " ";
     });
     const path = document.createElementNS(NS, "path");
@@ -520,6 +461,15 @@ function drawChart() {
     path.setAttribute("stroke-linejoin", "round");
     path.setAttribute("stroke-linecap", "round");
     svg.appendChild(path);
+    s.forEach((e) => {
+      const ts = new Date(e.date).getTime();
+      const pct = ((e.price - base) / base) * 100;
+      const c = document.createElementNS(NS, "circle");
+      c.setAttribute("cx", xFor(ts)); c.setAttribute("cy", yFor(pct));
+      c.setAttribute("r", s.length === 1 ? "3.5" : "2.5");
+      c.setAttribute("fill", colorOf(t));
+      svg.appendChild(c);
+    });
   });
 
   const overlay = document.createElementNS(NS, "rect");
@@ -534,15 +484,26 @@ function drawChart() {
   crosshair.setAttribute("visibility", "hidden");
   svg.appendChild(crosshair);
 
+  function nearestEntry(t, ts) {
+    const s = seriesMap[t];
+    if (!s || s.length === 0) return null;
+    let best = s[0], bestDiff = Math.abs(new Date(s[0].date).getTime() - ts);
+    for (const e of s) {
+      const diff = Math.abs(new Date(e.date).getTime() - ts);
+      if (diff < bestDiff) { best = e; bestDiff = diff; }
+    }
+    return best;
+  }
+
   function handleMove(clientX) {
     const rect = svg.getBoundingClientRect();
     const relX = ((clientX - rect.left) / rect.width) * width;
-    let idx = Math.round(((relX - padL) / plotW) * (rows.length - 1));
-    idx = Math.max(0, Math.min(rows.length - 1, idx));
-    const x = xFor(idx);
+    const ratio = Math.max(0, Math.min(1, (relX - padL) / plotW));
+    const ts = minTs + ratio * (maxTs - minTs);
+    const x = padL + ratio * plotW;
     crosshair.setAttribute("x1", x); crosshair.setAttribute("x2", x);
     crosshair.setAttribute("visibility", "visible");
-    showTooltip(rows[idx], visibleTickers, x, rect);
+    showTooltip(ts, visibleTickers, seriesMap, x, rect, nearestEntry);
   }
   function handleLeave() {
     crosshair.setAttribute("visibility", "hidden");
@@ -555,20 +516,27 @@ function drawChart() {
   overlay.addEventListener("touchend", handleLeave);
 }
 
-function showTooltip(row, visibleTickers, x, svgRect) {
-  let html = `<div class="tooltipDate">${row.dateLabel}</div>`;
+function showTooltip(ts, visibleTickers, seriesMap, x, svgRect, nearestEntry) {
+  let html = "";
+  let any = false;
   visibleTickers.forEach((t) => {
-    if (row[t] == null) return;
-    const price = row[t + "_price"];
-    const up = row[t] >= 0;
+    const s = seriesMap[t];
+    if (!s || s.length === 0) return;
+    const entry = nearestEntry(t, ts);
+    if (!entry) return;
+    any = true;
+    const base = s[0].price;
+    const pct = ((entry.price - base) / base) * 100;
+    const up = pct >= 0;
     html += `<div class="tooltipRow">
-      <span class="dot" style="width:7px;height:7px;border-radius:50%;background:${colorOf(t)}"></span>
+      <span style="width:7px;height:7px;border-radius:50%;background:${colorOf(t)};flex-shrink:0;"></span>
       <span class="tooltipSym">${t}</span>
-      <span class="tooltipPrice">${fmtPrice(price)}</span>
-      <span class="tooltipPct" style="color:${up ? "#2fbf9f" : "#f25a5a"}">${fmtPct(row[t])}</span>
+      <span class="tooltipPrice">${fmtPrice(entry.price)}</span>
+      <span class="tooltipPct" style="color:${up ? "#2fbf9f" : "#f25a5a"}">${fmtPct(pct)}</span>
     </div>`;
   });
-  tooltip.innerHTML = html;
+  if (!any) { tooltip.style.display = "none"; return; }
+  tooltip.innerHTML = `<div class="tooltipDate">${fmtDateShort(new Date(ts).toISOString().slice(0,10))}</div>` + html;
   tooltip.style.display = "block";
   const cardWidth = svgRect.width;
   let left = x + 12;
@@ -581,7 +549,7 @@ function showTooltip(row, visibleTickers, x, svgRect) {
 function render() {
   renderRangeButtons();
   renderSymbolGrid();
-  document.getElementById("noKeyBanner").style.display = (!apiKey && document.getElementById("keyPanel").style.display !== "block") ? "flex" : "none";
+  renderEditPanel();
   drawChart();
 }
 
@@ -589,7 +557,6 @@ window.addEventListener("resize", drawChart);
 
 // ---------------- boot ----------------
 render();
-loadAll();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
