@@ -537,15 +537,15 @@ function drawChart() {
     path.setAttribute("stroke-linejoin", "round");
     path.setAttribute("stroke-linecap", "round");
     svg.appendChild(path);
-    s.forEach((e) => {
-      const ts = new Date(e.date).getTime();
-      const pct = ((e.price - base) / base) * 100;
+    if (s.length === 1) {
+      const ts = new Date(s[0].date).getTime();
+      const pct = 0;
       const c = document.createElementNS(NS, "circle");
       c.setAttribute("cx", xFor(ts)); c.setAttribute("cy", yFor(pct));
-      c.setAttribute("r", s.length === 1 ? "3.5" : "2.5");
+      c.setAttribute("r", "3.5");
       c.setAttribute("fill", colorOf(t));
       svg.appendChild(c);
-    });
+    }
   });
 
   const overlay = document.createElementNS(NS, "rect");
