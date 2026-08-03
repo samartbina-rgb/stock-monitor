@@ -29,6 +29,9 @@
   .logoDot { width:8px; height:8px; border-radius:50%; background:linear-gradient(135deg,#3d7cf4,#2fbf9f); }
   h1 { font-size:18px; font-weight:700; margin:0; letter-spacing:-0.02em; color:#eef0f4; }
   .subtitle { font-size:11px; color:#5b6270; font-weight:500; }
+  .headerBtns { display:flex; gap:6px; }
+  .iconBtn { background:#12161f; border:1px solid #1c212b; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:#9198a8; font-size:14px; }
+  .backupToast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#12161fee; border:1px solid #232a38; border-radius:8px; padding:10px 16px; font-size:12.5px; color:#eef0f4; z-index:20; backdrop-filter: blur(4px); box-shadow:0 4px 16px rgba(0,0,0,0.4); }
 
   .rangeGroup { display:flex; gap:2px; background:#12161f; border:1px solid #1c212b; border-radius:9px; padding:3px; margin-bottom:12px; }
   .rangeBtn { flex:1; background:transparent; border:none; color:#7b8291; font-size:12.5px; font-weight:600; padding:8px 0; border-radius:6px; font-family:'IBM Plex Mono', monospace; }
@@ -103,6 +106,11 @@
     <h1>Compare</h1>
     <span class="subtitle">manual price log</span>
   </div>
+  <div class="headerBtns">
+    <button class="iconBtn" id="exportBtn" title="ส่งออกข้อมูลสำรอง">⬇</button>
+    <button class="iconBtn" id="importBackupBtn" title="นำเข้าไฟล์สำรอง">⬆</button>
+    <input type="file" id="importFileInput" accept="application/json" style="display:none" />
+  </div>
 </div>
 
 <div class="rangeGroup" id="rangeGroup"></div>
@@ -123,6 +131,7 @@
 </div>
 
 <div class="footerRow"><span class="footerNote">ข้อมูลที่คุณบันทึกเอง เก็บไว้ในเครื่องนี้เท่านั้น · แตะการ์ดเพื่อซ่อน/แสดงเส้นในกราฟ</span></div>
+<div id="backupToastWrap"></div>
 
 <script>
 // ---------------- config ----------------
@@ -630,6 +639,74 @@ function render() {
 }
 
 window.addEventListener("resize", drawChart);
+
+// ---------------- backup: export / import ----------------
+function showToast(text, isErr) {
+  const wrap = document.getElementById("backupToastWrap");
+  wrap.innerHTML = "";
+  const el = document.createElement("div");
+  el.className = "backupToast";
+  el.style.color = isErr ? "#f25a5a" : "#eef0f4";
+  el.textContent = text;
+  wrap.appendChild(el);
+  setTimeout(() => { if (wrap.contains(el)) wrap.removeChild(el); }, 3200);
+}
+
+function exportBackup() {
+  const payload = {
+    type: "compare-app-backup",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    tickers,
+    history,
+    range,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = todayStr();
+  a.href = url;
+  a.download = `compare-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  showToast("ส่งออกไฟล์สำรองแล้ว ✓", false);
+}
+
+function importBackupFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || typeof data !== "object" || !Array.isArray(data.tickers) || typeof data.history !== "object") {
+        throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
+      }
+      const ok = confirm(`นำเข้าข้อมูลจากไฟล์นี้จะแทนที่ข้อมูลปัจจุบันทั้งหมด (${data.tickers.length} หุ้น)\n\nดำเนินการต่อหรือไม่?`);
+      if (!ok) return;
+      tickers = data.tickers;
+      history = data.history || {};
+      tickers.forEach((t) => { if (!history[t]) history[t] = []; });
+      if (data.range && RANGE_OPTIONS.some((r) => r.key === data.range)) range = data.range;
+      hidden = new Set();
+      editingTicker = null;
+      persist();
+      render();
+      showToast("นำเข้าข้อมูลสำเร็จ ✓", false);
+    } catch (err) {
+      showToast("⚠ นำเข้าไม่สำเร็จ: " + (err.message || "ไฟล์เสีย"), true);
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById("exportBtn").onclick = exportBackup;
+document.getElementById("importBackupBtn").onclick = () => document.getElementById("importFileInput").click();
+document.getElementById("importFileInput").onchange = (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (file) importBackupFile(file);
+  e.target.value = "";
+};
 
 // ---------------- boot ----------------
 render();
